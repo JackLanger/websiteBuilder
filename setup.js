@@ -133,7 +133,45 @@ function createElement() {
     borders.forEach((el) => {
       el.className = "border";
       div.appendChild(el);
-      el.addEventListener("mousedown", adjust);
+
+      /**
+       * resize function for divs 
+       */
+      el.addEventListener("mousedown", (e)=>{
+          window.addEventListener('mousemove',mousemove);
+          window.addEventListener('mouseup',mouseup);
+
+          let rect = div.getBoundingClientRect();
+
+          function mousemove(e){
+
+            var pos = {
+              x:e.clientX||e.pageX,
+              y:e.clientY||e.pageY
+            };
+
+            let heigth = rect.top + rect.height - pos.y;
+
+            if(el.id == "e"){
+              div.style.width =  pos.x -rect.left+ "px";
+            }else if(el.id == "w"){
+              console.log(rect);
+              div.style.width = rect.left + rect.width - pos.x +"px";
+              div.style.left = pos.x - sidebar.getBoundingClientRect().width +"px"
+            }
+            else if(el.id == "n"){
+              div.style.height  = rect.top + rect.height - pos.y +"px";
+              div.style.top = (rect.top)-(rect.top+pos.y) +"px";
+            }else{
+              div.style.height  =  pos.y -rect.top +"px";
+            }
+
+          }
+          function mouseup(){            
+          window.removeEventListener('mousemove',mousemove);
+          window.removeEventListener('mouseup',mouseup);
+          }
+      });
     });
 
     body.appendChild(div);
@@ -171,7 +209,6 @@ function createElement() {
         div.style.left = x + "px";
         div.style.top = y-(div.getBoundingClientRect().height*div.id) + "px";
 
-        console.log(div,x,y);
       }
 
       // unsubscribe from the events
