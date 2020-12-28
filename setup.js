@@ -155,13 +155,12 @@ function createElement() {
             if(el.id == "e"){
               div.style.width =  pos.x -rect.left+ "px";
             }else if(el.id == "w"){
-              console.log(rect);
               div.style.width = rect.left + rect.width - pos.x +"px";
               div.style.left = pos.x - sidebar.getBoundingClientRect().width +"px"
             }
             else if(el.id == "n"){
               div.style.height  = rect.top + rect.height - pos.y +"px";
-              div.style.top = (rect.top)-(rect.top+pos.y) +"px";
+              div.style.top = pos.y +"px";
             }else{
               div.style.height  =  pos.y -rect.top +"px";
             }
