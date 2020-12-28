@@ -3,7 +3,7 @@ const handle = document.querySelector(".handle");
 const toolsNav = document.querySelector(".tools_nav");
 const body = document.querySelector(".outputBody");
 
-var id = -1; 
+var id = -1;
 
 //transform nodelist to array
 
@@ -24,9 +24,9 @@ window.addEventListener("load", () => {
   createElement();
 });
 
-/*
- *highlight selected tab
- */
+/************************
+ *highlight selected tab*
+ ***********************/
 
 toolsArr.forEach((elem) => {
   elem.addEventListener("click", () => {
@@ -42,9 +42,9 @@ toolsArr.forEach((elem) => {
   });
 });
 
-/*
- *resize function, resizing the toolsbar on drag
- */
+/************************************************
+ *resize function, resizing the toolsbar on drag*
+ ***********************************************/
 handle.addEventListener("mousedown", resize);
 const sidebar = document.querySelector(".sidebar");
 
@@ -79,9 +79,9 @@ function resize() {
   }
 }
 
-/**
- * create a new div element on the body
- */
+/***************************************
+ * create a new div element on the body*
+ **************************************/
 function createElement() {
   let tools = document.querySelectorAll(".tools");
 
@@ -130,53 +130,51 @@ function createElement() {
           break;
       }
     }
+    /*****************************
+     * resize divs on border drag*
+     ****************************/
     borders.forEach((el) => {
       el.className = "border";
       div.appendChild(el);
 
-      /**
-       * resize function for divs 
-       */
-      el.addEventListener("mousedown", (e)=>{
-          window.addEventListener('mousemove',mousemove);
-          window.addEventListener('mouseup',mouseup);
+      el.addEventListener("mousedown", (e) => {
+        window.addEventListener("mousemove", mousemove);
+        window.addEventListener("mouseup", mouseup);
 
-          let rect = div.getBoundingClientRect();
+        let rect = div.getBoundingClientRect();
 
-          function mousemove(e){
+        function mousemove(e) {
+          var pos = {
+            x: e.clientX || e.pageX,
+            y: e.clientY || e.pageY,
+          };
 
-            var pos = {
-              x:e.clientX||e.pageX,
-              y:e.clientY||e.pageY
-            };
+          let heigth = rect.top + rect.height - pos.y;
 
-            let heigth = rect.top + rect.height - pos.y;
-
-            if(el.id == "e"){
-              div.style.width =  pos.x -rect.left+ "px";
-            }else if(el.id == "w"){
-              div.style.width = rect.left + rect.width - pos.x +"px";
-              div.style.left = pos.x - sidebar.getBoundingClientRect().width +"px"
-            }
-            else if(el.id == "n"){
-              div.style.height  = rect.top + rect.height - pos.y +"px";
-              div.style.top = pos.y +"px";
-            }else{
-              div.style.height  =  pos.y -rect.top +"px";
-            }
-
+          if (el.id == "e") {
+            div.style.width = pos.x - rect.left + "px";
+          } else if (el.id == "w") {
+            div.style.width = rect.left + rect.width - pos.x + "px";
+            div.style.left =
+              pos.x + "px";
+          } else if (el.id == "n") {
+            div.style.height = rect.top + rect.height - pos.y + "px";
+            div.style.top = pos.y + "px";
+          } else {
+            div.style.height = pos.y - rect.top + "px";
           }
-          function mouseup(){            
-          window.removeEventListener('mousemove',mousemove);
-          window.removeEventListener('mouseup',mouseup);
-          }
+        }
+        function mouseup() {
+          window.removeEventListener("mousemove", mousemove);
+          window.removeEventListener("mouseup", mouseup);
+        }
       });
     });
 
     body.appendChild(div);
-/**
- * move the new divs by drag and drop
- */
+    /*************************************
+     * move the new divs by drag and drop*
+     ************************************/
     dragArea.addEventListener("mousedown", (e) => {
       //subscribe to events
       window.addEventListener("mousemove", mousemove);
@@ -184,9 +182,10 @@ function createElement() {
 
       dragArea.style.cursor = "move";
 
-      var sideWidth = sidebar.getBoundingClientRect().width;
+      var sidebarWidth = sidebar.getBoundingClientRect().width;
+      divRect = div.getBoundingClientRect();
 
-      let left = div.getBoundingClientRect().left - sideWidth;
+      let left = div.getBoundingClientRect().left - sidebarWidth;
       let top = div.getBoundingClientRect().top;
 
       offset = {
@@ -197,17 +196,18 @@ function createElement() {
       function mousemove(e) {
         e.preventDefault();
 
+        
         var pos = {
           x: e.clientX || e.pageX,
           y: e.clientY || e.pageY,
         };
 
-        let x = pos.x + offset.x;
+        // let x = pos.x + offset.x;
+        let x = pos.x - (divRect.width/2);
         let y = pos.y + offset.y;
 
         div.style.left = x + "px";
-        div.style.top = y-(div.getBoundingClientRect().height*div.id) + "px";
-
+        div.style.top = y  + "px";
       }
 
       // unsubscribe from the events

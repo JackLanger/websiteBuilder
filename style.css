@@ -104,7 +104,7 @@ body {
   height: 100px;
   border: solid;
   border: solid thin #aaa;
-  position: relative;
+  position: absolute;
   object-fit: contain;
 }
 .grab{
