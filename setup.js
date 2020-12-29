@@ -49,10 +49,10 @@ toolsArr.forEach((elem) => {
 /************************************************
  *resize function, resizing the toolsbar on drag*
  ***********************************************/
-handle.addEventListener("mousedown", resize);
+handle.addEventListener("mousedown", resizeSidebar);
 const sidebar = document.querySelector(".sidebar");
 
-function resize() {
+function resizeSidebar() {
   window.addEventListener("mousemove", mousemove);
   window.addEventListener("mouseup", mouseup);
 
@@ -87,17 +87,16 @@ function resize() {
  * create a new div element on the body*
  **************************************/
 function createElement() {
-  let tools = document.querySelectorAll(".tools");
-
+  let tools = document.querySelectorAll(".tools"); //get all tools from the sidebar
+  //subscribe the clickevent to all
   tools.forEach((elem) => {
-    elem.addEventListener("click", click);
+    elem.addEventListener("click", createNewContainer);
   });
-
-  function click() {
-    /**
-     * create the element
-     * */
-    ++id;
+  /********************************************
+   * create a new container with resize actions*
+   ********************************************/
+  function createNewContainer() {
+    ++id; //individual id for each
 
     let div = document.createElement("DIV");
     let dragArea = document.createElement("DIV");
@@ -108,13 +107,14 @@ function createElement() {
 
     div.appendChild(dragArea);
 
+    //areas for resize action
     let borders = [
       document.createElement("DIV"),
       document.createElement("DIV"),
       document.createElement("DIV"),
       document.createElement("DIV"),
     ];
-
+    //assign a id for each border depending on its location
     for (let i = 0; i < borders.length; i++) {
       switch (i) {
         case 0:
@@ -147,6 +147,12 @@ function createElement() {
 
         let setFullWidth = false;
         let setFullHeight = false;
+        let dockTo = {
+          left: false,
+          right: false,
+          top: false,
+          bottom: false,
+        };
 
         let rect = div.getBoundingClientRect();
 
@@ -155,58 +161,202 @@ function createElement() {
             x: e.clientX || e.pageX,
             y: e.clientY || e.pageY,
           };
-          let heigth = rect.top + rect.height - pos.y;
 
-          if (el.id == "e") {
+          resizeElement(el.id);
+          /**
+           * reset to base values
+           */
+
+          function resizeElement(id) {
+            switch (id) {
+              case "e":
+                resizeRight();
+                break;
+              case "s":
+                resizeBottom();
+                break;
+              case "n":
+                resizeTop();
+                break;
+              case "w":
+                resizeLeft();
+                break;
+            }
+          }
+
+          function resizeRight() {
             if (
-              pos.x > window.innerWidth - 25 &&
-              rect.left <= sidebar.getBoundingClientRect().width + 20
+              //can scale to full
+              dockToObject(window.innerWidth, pos.x) &&
+              dockToObject(rect.left, sidebar.getBoundingClientRect().width)
             ) {
               div.style.borderRight = highlightedBorderStyle;
               div.style.borderLeft = highlightedBorderStyle;
               setFullWidth = true;
-            } else {
-              div.style.borderRight = standardBorderStyle;
-              div.style.borderLeft = standardBorderStyle;
+            }
+            //can dock to side
+            else if (
+              dockToObject(window.innerWidth, pos.x) &&
+              !dockToObject(rect.left, sidebar.getBoundingClientRect().width)
+            ) {
+              dockTo.right = true;
               setFullWidth = false;
+              div.style.borderRight = highlightedBorderStyle;
+              div.style.borderLeft = standardBorderStyle;
+            } else {
+              reset();
             }
             div.style.width = pos.x - rect.left + "px";
-          } else if (el.id == "w") {
+          }
+          function resizeLeft() {
             if (
-              pos.x < sidebar.getBoundingClientRect().width + 20 &&
-              rect.right >= window.innerWidth - 20
+              //can scale
+              dockToObject(pos.x, sidebar.getBoundingClientRect().width) &&
+              dockToObject(window.innerWidth, rect.right)
             ) {
               div.style.borderRight = highlightedBorderStyle;
               div.style.borderLeft = highlightedBorderStyle;
               setFullWidth = true;
+            } else if (
+              dockToObject(pos.x, sidebar.getBoundingClientRect().width) &&
+              !dockToObject(window.innerWidth, rect.right)
+            ) {
+              div.style.borderLeft = highlightedBorderStyle;
+              dockTo.left = true;
             } else {
-              div.style.borderRight = standardBorderStyle;
-              div.style.borderLeft = standardBorderStyle;
-              setFullWidth = false;
+              reset();
             }
             div.style.width = rect.left + rect.width - pos.x + "px";
             div.style.left = pos.x + "px";
-          } else if (el.id == "n") {
+          }
+          function resizeTop() {
             div.style.height = rect.top + rect.height - pos.y + "px";
             div.style.top = pos.y + "px";
-          } else {
+
+            if (dockToObject(pos.y, 0)) {
+              div.style.borderTop = highlightedBorderStyle;
+              dockTo.top = true;
+            } else reset();
+          }
+          function resizeBottom() {
             div.style.height = pos.y - rect.top + "px";
+            //can scale
+            if (rect.top == 0 && dockToObject(window.innerHeight, pos.y)) {
+              div.style.borderBottom = highlightedBorderStyle;
+              setFullHeight = true;
+            }
+            //can dock
+            else if (rect.top != 0 && dockToObject(window.innerHeight, pos.y)) {
+              div.style.borderBottom = highlightedBorderStyle;
+              dockTo.bottom = true;
+            } else reset();
           }
         }
+
         function mouseup() {
           window.removeEventListener("mousemove", mousemove);
           window.removeEventListener("mouseup", mouseup);
 
-          if (setFullWidth == true) {
-            div.style.width = "100%";
-            div.style.position = "relative";
-            div.style.left = "0px";
-            div.style.borderRight = standardBorderStyle;
-            div.style.borderLeft = standardBorderStyle;
+          let offsetY = div.getBoundingClientRect().top;
+          let width = div.getBoundingClientRect().width;
+          let height = div.getBoundingClientRect().height;
+          let offsetLeft =
+            div.getBoundingClientRect().left -
+            sidebar.getBoundingClientRect().width;
+
+          console.log(offsetY);
+
+          if (setFullWidth) {
+            setWidth(100);
           }
+          if (setFullHeight) {
+            setHeight(100);
+          }
+          if (dockTo.bottom) {
+            dockToScreenBottom(offsetY, height);
+          }
+          if (dockTo.right) {
+            dockToScreenRight();
+          }
+          if (dockTo.left) {
+            dockToScreenLeft(offsetLeft, width);
+          }
+          if (dockTo.top) {
+            dockToScreenTop(offsetY, height);
+          }
+        }
+        /**
+         * takes a value for relative screen height
+         * @param {int} value
+         */
+        function setHeight(value) {
+          div.style.height = value + "%";
+          div.style.position = "relative";
+          div.style.left =
+            rect.left - sidebar.getBoundingClientRect().width + "px";
+          reset();
+        }
+        /**
+         * takes a value for relative screen width
+         * @param {int} value
+         */
+        function setWidth(value) {
+          div.style.width = value + "%";
+          div.style.position = "relative";
+          div.style.left = "0px";
+          reset();
+        }
+        function dockToScreenBottom(offset, height) {
+          reset();
+          console.log(div.getBoundingClientRect().bottom);
+          div.style.top = "auto";
+          div.style.bottom = "0%";
+          div.style.position = "absolute";
+          div.style.left = rect.left + "px";
+        }
+        function dockToScreenTop(offset, height) {
+          reset();
+          div.style.top = 0;
+          div.style.height = height + offset + "px";
+        }
+        function dockToScreenLeft(offset, width) {
+          reset();
+
+          div.style.left = sidebar.getBoundingClientRect().width + "px";
+          div.style.width = offset + width + "px";
+        }
+        function dockToScreenRight() {
+          reset();
+          div.style.left =
+            rect.left - sidebar.getBoundingClientRect().width + "px";
+          div.style.position = "relative";
+          div.style.width = window.innerWidth - rect.left + "px";
+        }
+
+        function reset() {
+          setFullHeight = false;
+          setFullWidth = false;
+          dockTo.bottom = false;
+          dockTo.top = false;
+          dockTo.left = false;
+          dockTo.right = false;
+          div.style.border = standardBorderStyle;
         }
       });
     });
+    /**
+     * if dockable -parent <20 true
+     * @param {int} dockable
+     * @param {int} parent
+     */
+
+    function dockToObject(dockable, parent) {
+      if (dockable - parent <= 20) {
+        return true;
+      } else {
+        return false;
+      }
+    }
 
     body.appendChild(div);
     divArr.push(div);
@@ -219,14 +369,15 @@ function createElement() {
       window.addEventListener("mouseup", mouseup);
 
       var dock = { left: false, right: false, top: false, bottom: false };
-      var canDock = false;      
-      
+      var canDock = false;
+
       dragArea.style.cursor = "move";
-      
+      div.style.position = "absolute";
+
       var divRect = div.getBoundingClientRect();
-      
+
       var sidebarWidth = sidebar.getBoundingClientRect().width;
-      var maxRight = body.getBoundingClientRect().width +sidebarWidth;
+      var maxRight = body.getBoundingClientRect().width + sidebarWidth;
       let left = div.getBoundingClientRect().left - sidebarWidth;
       let top = div.getBoundingClientRect().top;
 
@@ -251,40 +402,28 @@ function createElement() {
         div.style.top = y + "px";
 
         //recall for updated position
-        let updatedRight = div.getBoundingClientRect().left +divRect.width;
+        let updatedRight = div.getBoundingClientRect().left + divRect.width;
 
-        if(dockToObject(x,sidebarWidth)){
-          console.log ( x - sidebarWidth);
+        if (dockToObject(x, sidebarWidth)) {
+          console.log(x - sidebarWidth);
           dock.left = true;
           div.style.borderLeft = highlightedBorderStyle;
           canDock = true;
-          
-        }else if (dockToObject(y,0)){
+        } else if (dockToObject(y, 0)) {
           dock.top = true;
           div.style.borderTop = highlightedBorderStyle;
           canDock = true;
-        }
-        else if(dockToObject(maxRight, updatedRight)){
+        } else if (dockToObject(maxRight, updatedRight)) {
           div.style.borderRight = highlightedBorderStyle;
           dock.right = true;
           canDock = true;
-        }
-        else{
+        } else {
           canDock = false;
           dock.left = false;
           dock.top = false;
           dock.right = false;
           dock.bottom = false;
           div.style.border = standardBorderStyle;
-        }
-        
-      }
-
-      function dockToObject(dockable, parent){
-        if (dockable - parent <= 20 ){
-          return true;
-        }else{
-          return false;
         }
       }
 
@@ -294,17 +433,17 @@ function createElement() {
         window.removeEventListener("mouseup", mouseup);
         dragArea.style.cursor = "auto";
 
-        if(canDock){
-          if (dock.left){
-            div.style.left = sidebarWidth+"px";
+        if (canDock) {
+          if (dock.left) {
+            div.style.left = sidebarWidth + "px";
             div.style.borderLeft = standardBorderStyle;
           }
-          if(dock.top){
+          if (dock.top) {
             div.style.top = 0;
             div.style.borderTop = standardBorderStyle;
           }
-          if(dock.right){
-            div.style.left = window.innerWidth-divRect.width+"px";
+          if (dock.right) {
+            div.style.left = window.innerWidth - divRect.width + "px";
             div.style.borderRight = standardBorderStyle;
           }
         }
