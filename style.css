@@ -106,11 +106,14 @@ body {
   border: solid thin #aaa;
   position: absolute;
   object-fit: contain;
+  box-sizing: border-box;
 }
 .grab{
-  margin:5px;
-  height: 100%;
-  object-fit: contain;
-  border:dashed thin #aaa;
+  left:1%;
+  top:1%;
+  position: relative;
+  height:98%;
+  width: 98%;
   box-sizing: border-box;
+  border:dashed thin #aaa;
 }

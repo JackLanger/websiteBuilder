@@ -2,6 +2,10 @@ const toolsLink = document.querySelectorAll(".tool_link");
 const handle = document.querySelector(".handle");
 const toolsNav = document.querySelector(".tools_nav");
 const body = document.querySelector(".outputBody");
+const standardBorderStyle = "solid thin #888";
+const highlightedBorderStyle = "solid 5px #88f";
+
+var divArr = [];
 
 var id = -1;
 
@@ -141,6 +145,9 @@ function createElement() {
         window.addEventListener("mousemove", mousemove);
         window.addEventListener("mouseup", mouseup);
 
+        let setFullWidth = false;
+        let setFullHeight = false;
+
         let rect = div.getBoundingClientRect();
 
         function mousemove(e) {
@@ -148,15 +155,37 @@ function createElement() {
             x: e.clientX || e.pageX,
             y: e.clientY || e.pageY,
           };
-
           let heigth = rect.top + rect.height - pos.y;
 
           if (el.id == "e") {
+            if (
+              pos.x > window.innerWidth - 25 &&
+              rect.left <= sidebar.getBoundingClientRect().width + 20
+            ) {
+              div.style.borderRight = highlightedBorderStyle;
+              div.style.borderLeft = highlightedBorderStyle;
+              setFullWidth = true;
+            } else {
+              div.style.borderRight = standardBorderStyle;
+              div.style.borderLeft = standardBorderStyle;
+              setFullWidth = false;
+            }
             div.style.width = pos.x - rect.left + "px";
           } else if (el.id == "w") {
+            if (
+              pos.x < sidebar.getBoundingClientRect().width + 20 &&
+              rect.right >= window.innerWidth - 20
+            ) {
+              div.style.borderRight = highlightedBorderStyle;
+              div.style.borderLeft = highlightedBorderStyle;
+              setFullWidth = true;
+            } else {
+              div.style.borderRight = standardBorderStyle;
+              div.style.borderLeft = standardBorderStyle;
+              setFullWidth = false;
+            }
             div.style.width = rect.left + rect.width - pos.x + "px";
-            div.style.left =
-              pos.x + "px";
+            div.style.left = pos.x + "px";
           } else if (el.id == "n") {
             div.style.height = rect.top + rect.height - pos.y + "px";
             div.style.top = pos.y + "px";
@@ -167,11 +196,20 @@ function createElement() {
         function mouseup() {
           window.removeEventListener("mousemove", mousemove);
           window.removeEventListener("mouseup", mouseup);
+
+          if (setFullWidth == true) {
+            div.style.width = "100%";
+            div.style.position = "relative";
+            div.style.left = "0px";
+            div.style.borderRight = standardBorderStyle;
+            div.style.borderLeft = standardBorderStyle;
+          }
         }
       });
     });
 
     body.appendChild(div);
+    divArr.push(div);
     /*************************************
      * move the new divs by drag and drop*
      ************************************/
@@ -180,11 +218,15 @@ function createElement() {
       window.addEventListener("mousemove", mousemove);
       window.addEventListener("mouseup", mouseup);
 
+      var dock = { left: false, right: false, top: false, bottom: false };
+      var canDock = false;      
+      
       dragArea.style.cursor = "move";
-
+      
+      var divRect = div.getBoundingClientRect();
+      
       var sidebarWidth = sidebar.getBoundingClientRect().width;
-      divRect = div.getBoundingClientRect();
-
+      var maxRight = body.getBoundingClientRect().width +sidebarWidth;
       let left = div.getBoundingClientRect().left - sidebarWidth;
       let top = div.getBoundingClientRect().top;
 
@@ -196,27 +238,76 @@ function createElement() {
       function mousemove(e) {
         e.preventDefault();
 
-        
         var pos = {
           x: e.clientX || e.pageX,
           y: e.clientY || e.pageY,
         };
 
         // let x = pos.x + offset.x;
-        let x = pos.x - (divRect.width/2);
+        let x = pos.x - divRect.width / 2;
         let y = pos.y + offset.y;
 
         div.style.left = x + "px";
-        div.style.top = y  + "px";
+        div.style.top = y + "px";
+
+        //recall for updated position
+        let updatedRight = div.getBoundingClientRect().left +divRect.width;
+
+        if(dockToObject(x,sidebarWidth)){
+          console.log ( x - sidebarWidth);
+          dock.left = true;
+          div.style.borderLeft = highlightedBorderStyle;
+          canDock = true;
+          
+        }else if (dockToObject(y,0)){
+          dock.top = true;
+          div.style.borderTop = highlightedBorderStyle;
+          canDock = true;
+        }
+        else if(dockToObject(maxRight, updatedRight)){
+          div.style.borderRight = highlightedBorderStyle;
+          dock.right = true;
+          canDock = true;
+        }
+        else{
+          canDock = false;
+          dock.left = false;
+          dock.top = false;
+          dock.right = false;
+          dock.bottom = false;
+          div.style.border = standardBorderStyle;
+        }
+        
+      }
+
+      function dockToObject(dockable, parent){
+        if (dockable - parent <= 20 ){
+          return true;
+        }else{
+          return false;
+        }
       }
 
       // unsubscribe from the events
       function mouseup() {
-        //div.style.left = recalcPosition()+"px";
-        //div.style.position = "relative";
         window.removeEventListener("mousemove", mousemove);
         window.removeEventListener("mouseup", mouseup);
         dragArea.style.cursor = "auto";
+
+        if(canDock){
+          if (dock.left){
+            div.style.left = sidebarWidth+"px";
+            div.style.borderLeft = standardBorderStyle;
+          }
+          if(dock.top){
+            div.style.top = 0;
+            div.style.borderTop = standardBorderStyle;
+          }
+          if(dock.right){
+            div.style.left = window.innerWidth-divRect.width+"px";
+            div.style.borderRight = standardBorderStyle;
+          }
+        }
       }
     });
   }
