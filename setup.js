@@ -5,7 +5,7 @@ const body = document.querySelector(".outputBody");
 const standardBorderStyle = "solid thin #888";
 const highlightedBorderStyle = "solid 5px #88f";
 
-var divArr = [];
+var containerArray = [];
 
 var id = -1;
 
@@ -163,9 +163,6 @@ function createElement() {
           };
 
           resizeElement(el.id);
-          /**
-           * reset to base values
-           */
 
           function resizeElement(id) {
             switch (id) {
@@ -332,7 +329,9 @@ function createElement() {
           div.style.position = "relative";
           div.style.width = window.innerWidth - rect.left + "px";
         }
-
+          /**
+           * reset to base values
+           */
         function reset() {
           setFullHeight = false;
           setFullWidth = false;
@@ -359,7 +358,7 @@ function createElement() {
     }
 
     body.appendChild(div);
-    divArr.push(div);
+    containerArray.push(div);
     /*************************************
      * move the new divs by drag and drop*
      ************************************/
