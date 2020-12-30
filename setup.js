@@ -100,8 +100,20 @@ function createElement() {
 
     let div = document.createElement("DIV");
     let dragArea = document.createElement("DIV");
-    var isScaled = false;
-    var isDocked = { left: false, right: false, top: false, bottom: false };
+
+    var element = {
+      isScaled: {
+        horizontal: false,
+        vertical: false,
+      },
+      isDocked: false,
+      dockTo: {
+        object: false,
+        screen: false,
+      },
+      isParent: false,
+      children: [],
+    };
 
     div.className = "newDiv";
     div.id = id;
@@ -186,8 +198,8 @@ function createElement() {
           function resizeRight() {
             if (
               //can scale to full
-              dockToObject(window.innerWidth, pos.x) &&
-              dockToObject(rect.left, sidebar.getBoundingClientRect().width)
+              canDockToObject(window.innerWidth, pos.x) &&
+              canDockToObject(rect.left, sidebar.getBoundingClientRect().width)
             ) {
               div.style.borderRight = highlightedBorderStyle;
               div.style.borderLeft = highlightedBorderStyle;
@@ -195,8 +207,8 @@ function createElement() {
             }
             //can dock to side
             else if (
-              dockToObject(window.innerWidth, pos.x) &&
-              !dockToObject(rect.left, sidebar.getBoundingClientRect().width)
+              canDockToObject(window.innerWidth, pos.x) &&
+              !canDockToObject(rect.left, sidebar.getBoundingClientRect().width)
             ) {
               dockTo.right = true;
               setFullWidth = false;
@@ -210,15 +222,15 @@ function createElement() {
           function resizeLeft() {
             if (
               //can scale
-              dockToObject(pos.x, sidebar.getBoundingClientRect().width) &&
-              dockToObject(window.innerWidth, rect.right)
+              canDockToObject(pos.x, sidebar.getBoundingClientRect().width) &&
+              canDockToObject(window.innerWidth, rect.right)
             ) {
               div.style.borderRight = highlightedBorderStyle;
               div.style.borderLeft = highlightedBorderStyle;
               setFullWidth = true;
             } else if (
-              dockToObject(pos.x, sidebar.getBoundingClientRect().width) &&
-              !dockToObject(window.innerWidth, rect.right)
+              canDockToObject(pos.x, sidebar.getBoundingClientRect().width) &&
+              !canDockToObject(window.innerWidth, rect.right)
             ) {
               div.style.borderLeft = highlightedBorderStyle;
               dockTo.left = true;
@@ -232,7 +244,7 @@ function createElement() {
             div.style.height = rect.top + rect.height - pos.y + "px";
             div.style.top = pos.y + "px";
 
-            if (dockToObject(pos.y, 0)) {
+            if (canDockToObject(pos.y, 0)) {
               div.style.borderTop = highlightedBorderStyle;
               dockTo.top = true;
             } else reset();
@@ -240,12 +252,15 @@ function createElement() {
           function resizeBottom() {
             div.style.height = pos.y - rect.top + "px";
             //can scale
-            if (rect.top == 0 && dockToObject(window.innerHeight, pos.y)) {
+            if (rect.top == 0 && canDockToObject(window.innerHeight, pos.y)) {
               div.style.borderBottom = highlightedBorderStyle;
               setFullHeight = true;
             }
             //can dock
-            else if (rect.top != 0 && dockToObject(window.innerHeight, pos.y)) {
+            else if (
+              rect.top != 0 &&
+              canDockToObject(window.innerHeight, pos.y)
+            ) {
               div.style.borderBottom = highlightedBorderStyle;
               dockTo.bottom = true;
             } else reset();
@@ -267,27 +282,27 @@ function createElement() {
 
           if (setFullWidth) {
             setWidth(100);
-            isScaled = true;
+            element.isScaled.horizontal = true;
           }
           if (setFullHeight) {
             setHeight(100);
-            isScaled = true;
+            element.isScaled.vertical = true;
           }
           if (dockTo.bottom) {
             dockToScreenBottom(offsetY, height);
-            isDocked.bottom = true;
+            element.bottom = true;
           }
           if (dockTo.right) {
             dockToScreenRight();
-            isDocked.right = true;
+            element.right = true;
           }
           if (dockTo.left) {
             dockToScreenLeft(offsetLeft, width);
-            isDocked.left = true;
+            element.left = true;
           }
           if (dockTo.top) {
             dockToScreenTop(offsetY, height);
-            isDocked.top = true;
+            element.top = true;
           }
         }
         /**
@@ -357,8 +372,8 @@ function createElement() {
      * @param {int} parent
      */
 
-    function dockToObject(dockable, parent) {
-      if (dockable - parent <= 20) {
+    function canDockToObject(dockable, parent) {
+      if (dockable - parent <= 10 && dockable -parent >= -10 ) {
         return true;
       } else {
         return false;
@@ -369,7 +384,7 @@ function createElement() {
     containerArray.push(div);
     /**************************************
      * move the new divs by drag and drop *
-     * TODO: refactor for maintainability *
+     * BUG: on bottom dock offset the offset is off by sidebarwidth as bottom dock works so far only with absolute position and we don't have to account for the sidebar
      *************************************/
     dragArea.addEventListener("mousedown", (e) => {
       //subscribe to events
@@ -385,13 +400,13 @@ function createElement() {
       var sidebarWidth = sidebar.getBoundingClientRect().width;
       var maxRight = body.getBoundingClientRect().width + sidebarWidth;
       let left = div.getBoundingClientRect().left - sidebarWidth;
-      let top = div.getBoundingClientRect().top;
 
       offset = {
-        x: left - e.clientX,
-        y: top - e.clientY,
+        x: left - e.clientX + sidebarWidth,
+        y: divRect.top - e.clientY,
       };
 
+      //#region mousemove
       function mousemove(e) {
         e.preventDefault();
 
@@ -400,35 +415,139 @@ function createElement() {
           y: e.clientY || e.pageY,
         };
 
-        // let x = pos.x + offset.x;
-        let x = pos.x - divRect.width / 2;
+        if (element.isDocked) {
+          resetDock();
+        }
+
+        //#region if is scaled
+
+        if (element.isScaled.horizontal || element.isScaled.vertical) {
+          if (element.isScaled.horizontal) {
+            scaleDownHorizontal();
+            resetDock();
+          }
+          if (element.isScaled.horizontal && element.isScaled.vertical) {
+            scaleDownVertical();
+            scaleDownHorizontal();
+            resetDock();
+          } else {
+            scaleDownVertical();
+            resetDock();
+          }
+        }
+
+        function scaleDownHorizontal() {
+          div.style.position = "absolute";
+          div.style.width = absoluteDistanceInPixel(
+            body.getBoundingClientRect().width * 0.95
+          );
+          element.isScaled.horizontal = false;
+        }
+        function scaleDownVertical() {
+          div.style.position = "absolute";
+          div.style.height = absoluteDistanceInPixel(divRect.height * 0.95);
+          element.isScaled.vertical = false;
+        }
+
+        //#endregion if scaled
+
+        let x = pos.x + offset.x;
         let y = pos.y + offset.y;
 
-        div.style.left = x + "px";
-        div.style.top = y + "px";
+        div.style.left = absoluteDistanceInPixel(x);
+        div.style.top = absoluteDistanceInPixel(y);
 
         //recall for updated position
         let updatedRight = div.getBoundingClientRect().left + divRect.width;
 
+        //#region if can dock
+
         if (
-          dockToObject(x, sidebarWidth) ||
-          dockToObject(y, 0) ||
-          dockToObject(maxRight, updatedRight)
+          canDockToObject(x, sidebarWidth) ||
+          canDockToObject(y, 0) ||
+          canDockToObject(maxRight, updatedRight)
         ) {
-          if (dockToObject(x, sidebarWidth)) {
+          element.dockTo.screen = true;
+
+          if (canDockToObject(x, sidebarWidth)) {
             canDockLeft();
           }
-          if (dockToObject(y, 0)) {
+          if (canDockToObject(y, 0)) {
             canDockTop();
           }
-          if (dockToObject(maxRight, updatedRight)) {
+          if (canDockToObject(maxRight, updatedRight)) {
             canDockRight();
           }
         } else {
           resetDock();
+          dockToParent();
+          console.log(dockToParent());
+        }
+/**
+ * loops through all available objects and checks for position of the draged object 
+ * TODO:optimize for performance, taxing on a lot of divs
+ * DO NOT COPY! bad performance when a lot of divs on screen
+ * @returns the div that will be a parent 
+ */
+        function dockToParent(){
+          var parent = null;
+          if (containerArray.length > 1) {
+            for (let i = 0; i< containerArray.length;i++) {
+
+              if (containerArray[i].id == div.id) continue;
+              
+              let divObj = {
+                left: div.getBoundingClientRect().left,
+                right:
+                  div.getBoundingClientRect().left +
+                  div.getBoundingClientRect().width,
+                top: div.getBoundingClientRect().top,
+                bottom:
+                  div.getBoundingClientRect().top +
+                  div.getBoundingClientRect().height,
+              };
+
+              let obj = {
+                left: containerArray[i].getBoundingClientRect().left,
+                right:
+                containerArray[i].getBoundingClientRect().left +
+                containerArray[i].getBoundingClientRect().width,
+                top: containerArray[i].getBoundingClientRect().top,
+                bottom:
+                containerArray[i].getBoundingClientRect().top +
+                containerArray[i].getBoundingClientRect().height,
+              };
+
+              if (canDockToObject(divObj.left,obj.right)) {
+                //dock right
+                containerArray[i].style.borderRight = highlightedBorderStyle;
+                parent = containerArray[i];
+                canDock.right = true;
+              } else if (canDockToObject(divObj.right, obj.left)) {
+                //dock left
+                containerArray[i].style.borderLeft = highlightedBorderStyle;
+                parent = containerArray[i];
+                canDock.left = true;
+              } else if (canDockToObject(divObj.top, obj.bottom)) {
+                //dock bottom
+                containerArray[i].style.borderBottom = highlightedBorderStyle;
+                parent = containerArray[i];
+                canDock.bototm = true;
+              } else if (canDockToObject(divObj.bottom, obj.top)) {
+                //dock top
+                containerArray[i].style.borderTop = highlightedBorderStyle;
+                parent = containerArray[i];
+                canDock.top = true;
+              }else{
+                parent = null;
+                resetContaierArray(i);
+              }
+            }
+          }
+          return parent;
         }
 
-
+        //#endregion if
         function canDockLeft() {
           div.style.borderLeft = highlightedBorderStyle;
           canDock.left = true;
@@ -451,12 +570,20 @@ function createElement() {
         div.style.border = standardBorderStyle;
       }
 
+      function resetContaierArray(index){
+        containerArray[index].style.border = standardBorderStyle;
+        Object.keys(canDock).forEach(k=>{
+          canDock[k] = false;
+        });
+      }
+
       /**
        * loop through keys and set as false
        */
       function resetIsDocked() {
-        Object.keys(isDocked).forEach((key) => {
-          isDocked[key] = false;
+        element.isDocked = false;
+        Object.keys(element.dockTo).forEach((key) => {
+          element.dockTo[key] = false;
         });
       }
       /**
@@ -467,50 +594,93 @@ function createElement() {
           canDock[key] = false;
         });
       }
+      //#region mouseup
 
       // unsubscribe from the events
       function mouseup() {
         window.removeEventListener("mousemove", mousemove);
         window.removeEventListener("mouseup", mouseup);
-        
+
         dragArea.style.cursor = "auto";
 
         //multiple docking locations allowed
+        if (element.dockTo.screen) {
+          if (canDock.left) {
+            dockToLeft(sidebarWidth);
+          }
+          if (canDock.top) {
+            dockToTop(0);
+          }
+          if (canDock.right) {
+            let rightDockingPosition = window.innerWidth - divRect.width;
+            dockToRight(rightDockingPosition);
+          }
+          if (canDock.bottom) {
+            dockToBottom();
+          }
+        } else if (element.dockTo.object) {
+          parent = "";
 
-        if (canDock.left) {
-          dockToLeft();
+          if (canDock.left) {
+            dockAsChild(parent, div);
+          } else if (canDock.right) {
+            dockAsChild(parent, div);
+          } else if (canDock.top) {
+            dockAsChild(parent, div);
+          } else if (canDock.bottom) {
+            dockAsChild(parent, div);
+          }
         }
-        if (canDock.top) {
-          dockToTop();
-        }
-        if (canDock.right) {
-          dockToRight();
-        }        
-        if (canDock.bottom) {
-          dockToBottom();
-        }
+        resetCanDock();
 
-        resetDock();
-
-        function dockToLeft() {
-          isDocked.left = true;
-          div.style.left = absoluteDistanceInPixel(sidebarWidth);
+        /**
+         * dock to the right border of the other object
+         * @param {int} position
+         */
+        function dockToLeft(position) {
+          div.style.left = absoluteDistanceInPixel(position);
+          element.isDocked = true;
         }
-        function dockToRight() {
-          let rightDockingPosition = window.innerWidth - divRect.width;
-          div.style.left = absoluteDistanceInPixel(rightDockingPosition);
-          isDocked.right = true;
+        function dockToRight(position) {
+          div.style.left = absoluteDistanceInPixel(position);
+          element.isDocked = true;
         }
-        function dockToTop() {
-          isDocked.top = true;
-          div.style.top = absoluteDistanceInPixel(0);
+        function dockToTop(position) {
+          element.isDocked = true;
+          div.style.top = absoluteDistanceInPixel(position);
         }
-        function dockToBottom() {
+        function dockToBottom(position) {
+          element.isDocked = true;
           let callerName = "dockToBottom";
           throw new NotImplementedError(callerName);
         }
+
+        /**
+         * dock a container as child to another container
+         * @param {object} parent
+         * @param {object} child
+         */
+        function dockAsChild(parent, child) {
+          callerName = "dockAsChild";
+          //not implemented
+          throw new NotImplementedError(callerName);
+        }
+
+        adjustLeftPosition();
+      }
+      //#endregion mouseup
+      /**
+       * set the minimus left of the div to the sidebar width so it stays in the outputbody
+       */
+      function adjustLeftPosition() {
+        if (div.getBoundingClientRect().left < sidebarWidth) {
+          div.style.left = absoluteDistanceInPixel(sidebarWidth);
+        }
+        //reset borders
+        div.style.border = standardBorderStyle;
       }
     });
+    //#endregion mousemove
   }
 }
 
