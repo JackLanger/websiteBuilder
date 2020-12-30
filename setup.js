@@ -485,7 +485,7 @@ function createElement() {
         }
 /**
  * loops through all available objects and checks for position of the draged object 
- * TODO:optimize for performance, taxing on a lot of divs
+ * TODO:optimize for performance, taxing with a lot of divs
  * DO NOT COPY! bad performance when a lot of divs on screen
  * @returns the div that will be a parent 
  */
