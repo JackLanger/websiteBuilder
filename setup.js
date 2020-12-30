@@ -100,6 +100,8 @@ function createElement() {
 
     let div = document.createElement("DIV");
     let dragArea = document.createElement("DIV");
+    var isScaled = false;
+    var isDocked = { left: false, right: false, top: false, bottom: false };
 
     div.className = "newDiv";
     div.id = id;
@@ -265,21 +267,27 @@ function createElement() {
 
           if (setFullWidth) {
             setWidth(100);
+            isScaled = true;
           }
           if (setFullHeight) {
             setHeight(100);
+            isScaled = true;
           }
           if (dockTo.bottom) {
             dockToScreenBottom(offsetY, height);
+            isDocked.bottom = true;
           }
           if (dockTo.right) {
             dockToScreenRight();
+            isDocked.right = true;
           }
           if (dockTo.left) {
             dockToScreenLeft(offsetLeft, width);
+            isDocked.left = true;
           }
           if (dockTo.top) {
             dockToScreenTop(offsetY, height);
+            isDocked.top = true;
           }
         }
         /**
@@ -329,9 +337,9 @@ function createElement() {
           div.style.position = "relative";
           div.style.width = window.innerWidth - rect.left + "px";
         }
-          /**
-           * reset to base values
-           */
+        /**
+         * reset to base values
+         */
         function reset() {
           setFullHeight = false;
           setFullWidth = false;
@@ -359,22 +367,21 @@ function createElement() {
 
     body.appendChild(div);
     containerArray.push(div);
-    /*************************************
-     * move the new divs by drag and drop*
-     ************************************/
+    /**************************************
+     * move the new divs by drag and drop *
+     * TODO: refactor for maintainability *
+     *************************************/
     dragArea.addEventListener("mousedown", (e) => {
       //subscribe to events
       window.addEventListener("mousemove", mousemove);
       window.addEventListener("mouseup", mouseup);
 
-      var dock = { left: false, right: false, top: false, bottom: false };
-      var canDock = false;
+      var canDock = { left: false, right: false, top: false, bottom: false };
 
       dragArea.style.cursor = "move";
       div.style.position = "absolute";
 
       var divRect = div.getBoundingClientRect();
-
       var sidebarWidth = sidebar.getBoundingClientRect().width;
       var maxRight = body.getBoundingClientRect().width + sidebarWidth;
       let left = div.getBoundingClientRect().left - sidebarWidth;
@@ -403,50 +410,137 @@ function createElement() {
         //recall for updated position
         let updatedRight = div.getBoundingClientRect().left + divRect.width;
 
-        if (dockToObject(x, sidebarWidth)) {
-          console.log(x - sidebarWidth);
-          dock.left = true;
-          div.style.borderLeft = highlightedBorderStyle;
-          canDock = true;
-        } else if (dockToObject(y, 0)) {
-          dock.top = true;
-          div.style.borderTop = highlightedBorderStyle;
-          canDock = true;
-        } else if (dockToObject(maxRight, updatedRight)) {
-          div.style.borderRight = highlightedBorderStyle;
-          dock.right = true;
-          canDock = true;
+        if (
+          dockToObject(x, sidebarWidth) ||
+          dockToObject(y, 0) ||
+          dockToObject(maxRight, updatedRight)
+        ) {
+          if (dockToObject(x, sidebarWidth)) {
+            canDockLeft();
+          }
+          if (dockToObject(y, 0)) {
+            canDockTop();
+          }
+          if (dockToObject(maxRight, updatedRight)) {
+            canDockRight();
+          }
         } else {
-          canDock = false;
-          dock.left = false;
-          dock.top = false;
-          dock.right = false;
-          dock.bottom = false;
-          div.style.border = standardBorderStyle;
+          resetDock();
         }
+
+
+        function canDockLeft() {
+          div.style.borderLeft = highlightedBorderStyle;
+          canDock.left = true;
+        }
+        function canDockRight() {
+          div.style.borderRight = highlightedBorderStyle;
+          canDock.right = true;
+        }
+        function canDockTop() {
+          div.style.borderTop = highlightedBorderStyle;
+          canDock.top = true;
+        }
+      }
+      /**
+       * reset docking and border
+       */
+      function resetDock() {
+        resetCanDock();
+        resetIsDocked();
+        div.style.border = standardBorderStyle;
+      }
+
+      /**
+       * loop through keys and set as false
+       */
+      function resetIsDocked() {
+        Object.keys(isDocked).forEach((key) => {
+          isDocked[key] = false;
+        });
+      }
+      /**
+       * loop through keys and set as false
+       */
+      function resetCanDock() {
+        Object.keys(canDock).forEach((key) => {
+          canDock[key] = false;
+        });
       }
 
       // unsubscribe from the events
       function mouseup() {
         window.removeEventListener("mousemove", mousemove);
         window.removeEventListener("mouseup", mouseup);
+        
         dragArea.style.cursor = "auto";
 
-        if (canDock) {
-          if (dock.left) {
-            div.style.left = sidebarWidth + "px";
-            div.style.borderLeft = standardBorderStyle;
-          }
-          if (dock.top) {
-            div.style.top = 0;
-            div.style.borderTop = standardBorderStyle;
-          }
-          if (dock.right) {
-            div.style.left = window.innerWidth - divRect.width + "px";
-            div.style.borderRight = standardBorderStyle;
-          }
+        //multiple docking locations allowed
+
+        if (canDock.left) {
+          dockToLeft();
+        }
+        if (canDock.top) {
+          dockToTop();
+        }
+        if (canDock.right) {
+          dockToRight();
+        }        
+        if (canDock.bottom) {
+          dockToBottom();
+        }
+
+        resetDock();
+
+        function dockToLeft() {
+          isDocked.left = true;
+          div.style.left = absoluteDistanceInPixel(sidebarWidth);
+        }
+        function dockToRight() {
+          let rightDockingPosition = window.innerWidth - divRect.width;
+          div.style.left = absoluteDistanceInPixel(rightDockingPosition);
+          isDocked.right = true;
+        }
+        function dockToTop() {
+          isDocked.top = true;
+          div.style.top = absoluteDistanceInPixel(0);
+        }
+        function dockToBottom() {
+          let callerName = "dockToBottom";
+          throw new NotImplementedError(callerName);
         }
       }
     });
   }
+}
+
+/**
+ * distance in pixel
+ * @returns {string} distance+px
+ * @param {int} distance
+ */
+function absoluteDistanceInPixel(distance) {
+  return distance + "px";
+}
+
+/**
+ * @summary A error thrown when a method is defined but not implemented (yet).
+ * @param {any} message An additional message for the error.
+ */
+function NotImplementedError(message) {
+  ///<summary>The error thrown when the given function isn't implemented.</summary>
+  const sender = new Error().stack.split("\n")[2].replace(" at ", "");
+
+  this.message = `The method ${sender} isn't implemented.`;
+
+  // Append the message if given.
+  if (message) this.message += ` Message: "${message}".`;
+
+  let str = this.message;
+
+  while (str.indexOf("  ") > -1) {
+    str = str.replace("  ", " ");
+  }
+
+  this.message = str;
 }
